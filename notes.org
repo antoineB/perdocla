@@ -1,0 +1,40 @@
+* example d'usage du cli
+#+begin_src shell
+go perdocla add ../document/feuille_salaire_2024.pdf
+
+# ajoute un dossier
+go perdoccla add ../document
+
+# obtient la liste des documents trié par date d'ajout
+go perdoccla list
+
+# idéalement recherche sur full text
+go perdoccla list "full text"
+go perdoccla list --date 2024 --mime pdf --filename "feuille_salaire" --tags salaire,2024
+
+go perdoccla get 1 > /tmp/salaire.pdf
+
+# export la base de données
+go perdoccla export 
+#+end_src
+* code pour OCRifier une image
+#+begin_src go
+	client := gosseract.NewClient()
+	defer client.Close()
+	client.SetLanguage("fra")
+	client.SetImage("/home/antoine/Documents/clef_usb/banque/LivretA1.jpg")
+	text, _ := client.Text()
+	fmt.Println(text)
+#+end_src
+
+* DONE comment OCRifier un PDF
+libmupdf
+tesseract-ocr-eng
+tesseract-ocr-fra
+libtesseract-dev
+libleptonica-dev ??
+* TODO comment tokeniser un text stemmer français
+
+* TODO comment faire un index inversé sur sqlite
+
+* TODO comment chiffré sqlite
