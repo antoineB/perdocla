@@ -208,7 +208,7 @@ func SearchDocuments(connection *sql.DB, searchText string, date string, mime st
         if err != nil {
             return nil, err
         }
-		createdAt, errDate := time.Parse(time.DateTime, datetime)
+		createdAt, errDate := time.Parse(time.RFC3339, datetime)
 		if errDate != nil {
 			return nil, errDate
 		}
@@ -237,7 +237,7 @@ func GetDocument(connection *sql.DB, documentId int) (*Document, error) {
 		return nil, nil
 	}
 
-	createdAt, errDate := time.Parse(time.DateTime, datetime)
+	createdAt, errDate := time.Parse(time.RFC3339, datetime)
 	if errDate != nil {
 		return nil, errDate
 	}
