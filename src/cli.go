@@ -35,7 +35,12 @@ func (sb *ListCommand) Run(connection *sql.DB) error {
 
 	fs.Parse(sb.args)
 
-	tagSplits := strings.Split(tags, ",")
+	var tagSplits []string
+	if tags == "" {
+		tagSplits = []string{}
+	} else {
+		tagSplits = strings.Split(tags, ",")
+	}
 
 	documents, err := SearchDocuments(connection, search, date, mime, filename, tagSplits)
 	if err != nil {
