@@ -114,7 +114,7 @@ func (sb *GetCommand) Run(connection *sql.DB) error {
 	document, err := GetDocument(connection, id)
 
 	if err != nil {
-		return nil
+		return err
 	}
 
 	if document == nil {
