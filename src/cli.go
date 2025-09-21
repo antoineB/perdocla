@@ -163,7 +163,8 @@ func extractDbArgument(args []string) (string, []string, error) {
 				return "", args, fmt.Errorf("-db option should be followed by a filename")
 			}
 			// TODO: check if file exists
-			return args[index + 1], append(args[0:index], args[index + 2:]...), nil
+			tmp := args[index + 1]
+			return tmp, append(args[0:index], args[index + 2:]...), nil
 		}
 	}
 	return "", args, nil
