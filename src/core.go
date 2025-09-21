@@ -1,12 +1,13 @@
 package src
 
 import (
-	"os"
-	"database/sql"
 	"crypto/sha256"
-	"github.com/h2non/filetype"
+	"database/sql"
+	"os"
 	"strconv"
 	"time"
+
+	"github.com/h2non/filetype"
 )
 
 
@@ -225,14 +226,20 @@ func SearchDocuments(connection *sql.DB, searchText string, date string, mime st
 
 func GetDocument(connection *sql.DB, documentId int) (*Document, error) {
 	row := connection.QueryRow(
-		"SELECT filename, created_at, filename, mime_type FROM document WHERE id = $1",
+		"SELECT filename, created_at, mime_type FROM document WHERE id = $1",
 		documentId,
 	)
 
 	var datetime string
 	var filename string
 	var mimetype string
-	err := row.Scan(&datetime, &filename, &mimetype)
+	err := row.Scan(&filename, &datetime, &mimetype)
+
+	err = row.Err()
+    if err != nil {
+        return nil, err
+    }
+
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
