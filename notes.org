@@ -38,3 +38,6 @@ libleptonica-dev ??
 * TODO comment faire un index inversé sur sqlite
 
 * TODO comment chiffré sqlite
+* DONE faire que user_date puisse être remplis par l'utilisateur
+* DONE pouvoir dans le cli créé une nouvelle base
+* DONE vérifier que l'on peut extraire les données depuis la base

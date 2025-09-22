@@ -95,8 +95,10 @@ func (sb *GetCommand) Run(connection *sql.DB) error {
 	fs := flag.NewFlagSet("get", flag.ExitOnError)
 	var tags string
 	var date string
+	var output string
 	fs.StringVar(&tags, "tags", "", "Tags to add to the document")
 	fs.StringVar(&date, "date", "", "Date to add to the document")
+	fs.StringVar(&output, "output", "", "File where to write the content of the document")
 
 	fs.Parse(sb.args)
 
@@ -127,6 +129,7 @@ func (sb *GetCommand) Run(connection *sql.DB) error {
 	if tags != "" {
 		for tag := range strings.SplitSeq(tags, ",") {
 			err = AddTagToDocument(connection, id, tag)
+			// TODO: if the tag already exists print an error message and keep going
 			if err != nil {
 				return err
 			}
@@ -142,6 +145,15 @@ func (sb *GetCommand) Run(connection *sql.DB) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if output != "" {
+		fd, err := os.OpenFile(output, os.O_EXCL|os.O_CREATE|os.O_WRONLY, 0666)
+		if err != nil {
+			return err
+		}
+		defer fd.Close()
+		fd.Write(document.binary)
 	}
 
 	return nil

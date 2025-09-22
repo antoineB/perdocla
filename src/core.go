@@ -151,6 +151,7 @@ type Document struct {
 	createdAt time.Time
 	filename string
 	mimetype string
+	binary []byte
 }
 
 func SearchDocuments(connection *sql.DB, searchText string, date string, mime string, filename string, tags []string) ([]*Document, error) {
@@ -226,14 +227,15 @@ func SearchDocuments(connection *sql.DB, searchText string, date string, mime st
 
 func GetDocument(connection *sql.DB, documentId int) (*Document, error) {
 	row := connection.QueryRow(
-		"SELECT filename, created_at, mime_type FROM document WHERE id = $1",
+		"SELECT filename, created_at, mime_type, binary FROM document WHERE id = $1",
 		documentId,
 	)
 
 	var datetime string
 	var filename string
 	var mimetype string
-	err := row.Scan(&filename, &datetime, &mimetype)
+	var binary []byte
+	err := row.Scan(&filename, &datetime, &mimetype, &binary)
 
 	err = row.Err()
     if err != nil {
@@ -249,7 +251,13 @@ func GetDocument(connection *sql.DB, documentId int) (*Document, error) {
 		return nil, errDate
 	}
 
-	document := Document{id: documentId, createdAt: createdAt, filename: filename, mimetype: mimetype}
+	document := Document{
+		id: documentId,
+		createdAt: createdAt,
+		filename: filename,
+		mimetype: mimetype,
+		binary: binary,
+	}
 
 	return &document, nil;
 }
