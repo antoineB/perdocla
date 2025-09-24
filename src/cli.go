@@ -223,8 +223,8 @@ func ParseCommand(args []string) (SubCommandRunner, error) {
 	}
 }
 
-// else if subCommand == "config" {
-// 	flag.NewFlagSet("config", flag.ExitOnError)
+
+// TODO: Faire un export + chiffrement
 // } else if subCommand == "export" {
 // 	flag.NewFlagSet("export", flag.ExitOnError)
 

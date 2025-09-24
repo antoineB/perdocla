@@ -41,7 +41,7 @@ func nextWord(text []rune) (string, []rune) {
 	return "", nil
 }
 
-func StemText(language Language, text string) []string {
+func StemText(text string, language Language) []string {
 	runes := []rune(text)
 	var word string
 	words := []string{}

@@ -49,11 +49,32 @@ func InsertDocument(connection *sql.DB, filename string) (int, error) {
 	}
 
 	// TODO: variabilisé la langue
-	// text, err := ExtractText(filename, French)
-	// if err != nil {
-	// 	return id, err
-	// }
-	// connection.Query("INSERT INTO document_inverted_index(document_id, word, positions) VALUES($1, $2, jsonb_")
+	text, err := ExtractText(filename, French)
+	if err != nil {
+		return id, err
+	}
+	words := StemText(text, French)
+	wordPositions := make(map[string][]int)
+	var positions []int
+	for index, word := range words {
+		positions = wordPositions[word]
+		if positions == nil {
+			positions = []int{}
+		}
+		positions = append(positions, index)
+		wordPositions[word] = positions
+	}
+	for word, positions := range wordPositions {
+		sql := "INSERT INTO document_inverted_index(document_id, word, positions) VALUES($1, $2, jsonb_array("
+		for position := range positions {
+			sql = sql + strconv.Itoa(position) + ","
+		}
+		sql = sql[0:len(sql) - 1] + ")"
+		_, err := connection.Query(sql, id, word)
+		if err != nil {
+			return id, err
+		}
+	}
 
 	return id, nil
 }
