@@ -33,11 +33,15 @@ tesseract-ocr-eng
 tesseract-ocr-fra
 libtesseract-dev
 libleptonica-dev ??
-* TODO comment tokeniser un text stemmer français
-
+* DONE comment tokeniser un text stemmer français
 * TODO comment faire un index inversé sur sqlite
-
 * TODO comment chiffré sqlite
 * DONE faire que user_date puisse être remplis par l'utilisateur
 * DONE pouvoir dans le cli créé une nouvelle base
 * DONE vérifier que l'on peut extraire les données depuis la base
+* TODO pouvoir consulter facilement les document
+- faire une table config dans la base de donnée qui contient l'application a lancer en fonction du type de fichier
+- rajouter une option -consult dans le cli
+* DONE pour résoudre le problème d'incompatibilité entre les jpeg utiliser mutool directement en process
+* TODO pourvoir refaire l'extraction de text d'un document
+* TODO pouvoir ajouter un dossier

@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	_ "github.com/mattn/go-sqlite3"
+
 	"github.com/h2non/filetype"
 )
 
@@ -69,8 +71,8 @@ func InsertDocument(connection *sql.DB, filename string) (int, error) {
 		for position := range positions {
 			sql = sql + strconv.Itoa(position) + ","
 		}
-		sql = sql[0:len(sql) - 1] + ")"
-		_, err := connection.Query(sql, id, word)
+		sql = sql[0:len(sql) - 1] + "))"
+		_, err := connection.Exec(sql, id, word)
 		if err != nil {
 			return id, err
 		}

@@ -6,7 +6,6 @@ require github.com/mattn/go-sqlite3 v1.14.32
 
 require (
 	github.com/ebitengine/purego v0.8.4 // indirect
-	github.com/gen2brain/go-fitz v1.24.15 // indirect
 	github.com/h2non/filetype v1.1.3 // indirect
 	github.com/jupiterrider/ffi v0.5.0 // indirect
 	github.com/mattn/go-gtk v0.0.0-20240119050609-48574e312fac // indirect
