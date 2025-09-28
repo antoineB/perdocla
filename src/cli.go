@@ -203,11 +203,7 @@ func encryptCommand(dbName string, args []string) error {
 	_, err := os.Stat(keyFilename)
 	var key []byte
 	if os.IsNotExist(err) {
-		key, err = generateKey()
-		if err != nil {
-			return err
-		}
-		err = os.WriteFile(keyFilename, key, 0400)
+		key, err = generateKey(keyFilename)
 		if err != nil {
 			return err
 		}

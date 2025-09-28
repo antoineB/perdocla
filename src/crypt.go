@@ -1,20 +1,26 @@
 package src
 
 import (
-	"fmt"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
-    "crypto/aes"
-    "crypto/cipher"
-    "io"
-    "os"
+	"encoding/hex"
 	"errors"
+	"fmt"
+	"io"
+	"os"
 )
 
-func generateKey() ([]byte, error) {
+func generateKey(keyFilename string) ([]byte, error) {
 	key := make([]byte, 32)
 	length, _ := rand.Read(key)
 	if length != 32 {
 		return []byte{}, fmt.Errorf("Random generator didn't generate a long enough key")
+	}
+
+	err := os.WriteFile(keyFilename, []byte(hex.EncodeToString(key)), 0400)
+	if err != nil {
+		return []byte{}, err
 	}
 
 	return key, nil
@@ -81,9 +87,15 @@ func readKeyFile(filename string) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	if len(content) != 32 {
+	byteContent, err := hex.DecodeString(string(content))
+
+	if err != nil {
+		return []byte{}, err
+	}
+
+	if len(byteContent) != 32 {
 		return []byte{}, fmt.Errorf("The file %s should be 32 bytes length", filename)
 	}
 
-	return content, nil
+	return byteContent, nil
 }
