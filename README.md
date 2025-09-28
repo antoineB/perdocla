@@ -23,4 +23,10 @@ The options -output will write the content of the document to the given file, it
 
 - createdb
 Create the initial database use -db option to spécifier where
+
+- encrypt -key key_filename output_filename
+Encrypt database file (spécified by -db) to output_filename and use key_filename content as key if it exists or write to it with a new generated key if it doesn't exists.
+
+- decrypt -key key_filename input_filename
+Decrypt database to (-db) file using input_filename and use key from key_filename.
 ```

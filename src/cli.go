@@ -8,7 +8,6 @@ import (
 
 	"database/sql"
 	"fmt"
-	"reflect"
 	"time"
 )
 
@@ -20,7 +19,7 @@ type ListCommand struct {
 	args []string
 }
 
-func (sb *ListCommand) Run(connection *sql.DB) error {
+func (sb ListCommand) Run(connection *sql.DB) error {
 	fs := flag.NewFlagSet("list", flag.ExitOnError)
 	var search string
 	var date string
@@ -58,7 +57,7 @@ type AddCommand struct {
 	args []string
 }
 
-func (sb *AddCommand) Run(connection *sql.DB) error {
+func (sb AddCommand) Run(connection *sql.DB) error {
 	fs := flag.NewFlagSet("add", flag.ExitOnError)
 	var tags string
 	fs.StringVar(&tags, "tags", "", "Tags to add to the filename")
@@ -91,7 +90,7 @@ type GetCommand struct {
 	args []string
 }
 
-func (sb *GetCommand) Run(connection *sql.DB) error {
+func (sb GetCommand) Run(connection *sql.DB) error {
 	fs := flag.NewFlagSet("get", flag.ExitOnError)
 	var tags string
 	var date string
@@ -159,14 +158,6 @@ func (sb *GetCommand) Run(connection *sql.DB) error {
 	return nil
 }
 
-type CreateDbCommand struct {
-	args []string
-}
-
-func (sb *CreateDbCommand) Run(connection *sql.DB) error {
-	return nil
-}
-
 func extractDbArgument(args []string) (string, []string, error) {
 	// check if there is the option -db
 	for index, arg := range args {
@@ -174,7 +165,6 @@ func extractDbArgument(args []string) (string, []string, error) {
 			if len(args) == index + 1 {
 				return "", args, fmt.Errorf("-db option should be followed by a filename")
 			}
-			// TODO: check if file exists
 			tmp := args[index + 1]
 			return tmp, append(args[0:index], args[index + 2:]...), nil
 		}
@@ -199,35 +189,102 @@ func GetConnection(dbName string) (*sql.DB, error) {
 	return db, nil
 }
 
-func ParseCommand(args []string) (SubCommandRunner, error) {
-	if len(args) == 0 {
-		return nil, fmt.Errorf("Missing subcommand")
-	}
-	subCommand := args[0]
+func encryptCommand(dbName string, args []string) error {
+	fs := flag.NewFlagSet("add", flag.ExitOnError)
+	var keyFilename string
+	fs.StringVar(&keyFilename, "key", "", "The filename containing the key to read from or if empty to write to")
 
-	switch subCommand {
-	case "list":
-		sb := ListCommand{args: args[1:]}
-		return &sb, nil
-	case "add":
-		sb := AddCommand{args: args[1:]}
-		return &sb, nil
-	case "get":
-		sb := GetCommand{args: args[1:]}
-		return &sb, nil
-	case "createdb":
-		sb := CreateDbCommand{args: args[1:]}
-		return &sb, nil
-	default:
-		return nil, fmt.Errorf("Unknown subcommmand")
+	fs.Parse(args)
+
+	if keyFilename == "" {
+		return fmt.Errorf("The filename of the key is not set")
 	}
+
+	_, err := os.Stat(keyFilename)
+	var key []byte
+	if os.IsNotExist(err) {
+		key, err = generateKey()
+		if err != nil {
+			return err
+		}
+		err = os.WriteFile(keyFilename, key, 0400)
+		if err != nil {
+			return err
+		}
+	} else {
+		key, err = readKeyFile(keyFilename)
+		if err != nil {
+			return  err
+		}
+	}
+
+	remainingArgs := fs.Args()
+	if len(remainingArgs) == 0 {
+		return fmt.Errorf("The filename store content of encryption is not set")
+	}
+
+	outputFilename := remainingArgs[0]
+	_, err = os.Stat(outputFilename)
+	if err == nil {
+		return fmt.Errorf("The file %s already exists", outputFilename)
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	content, err := encryptFile(dbName, key)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(outputFilename, content, 0664)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
+func decryptCommand(dbName string, args []string) error {
+	fs := flag.NewFlagSet("add", flag.ExitOnError)
+	var keyFilename string
+	fs.StringVar(&keyFilename, "key", "", "The filename containing the key to read from or if empty to write to")
 
-// TODO: Faire un export + chiffrement
-// } else if subCommand == "export" {
-// 	flag.NewFlagSet("export", flag.ExitOnError)
+	fs.Parse(args)
 
+	if keyFilename == "" {
+		return fmt.Errorf("The filename of the key is not set")
+	}
+	key, err := readKeyFile(keyFilename)
+	if err != nil {
+		return  err
+	}
+
+	remainingArgs := fs.Args()
+	if len(remainingArgs) == 0 {
+		return fmt.Errorf("The filename to read from is not set")
+	}
+
+	inputFilename := remainingArgs[0]
+	_, err = os.Stat(inputFilename)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("The file %s doesn't exists", inputFilename)
+		}
+		return err
+	}
+
+	content, err := decryptFile(inputFilename, key)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(dbName, content, 0664)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func Exec() error {
 	args := os.Args[1:]
@@ -237,9 +294,30 @@ func Exec() error {
 		return err
 	}
 
-	command, err := ParseCommand(cleanArgs)
+	if len(cleanArgs) == 0 {
+		return fmt.Errorf("Missing subcommand")
+	}
+	subCommand := cleanArgs[0]
+
+	if subCommand == "decrypt" {
+		// Check that dbName DOESN'T exist
+		_, err = os.Stat(dbName)
+		if err == nil {
+			return fmt.Errorf("The file %s already exists", dbName)
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+		return decryptCommand(dbName, cleanArgs[1:])
+	}
+
+	// Check that dbName exists
+	_, err = os.Stat(dbName)
 	if err != nil {
 		return err
+	}
+
+	if subCommand == "encrypt" {
+		return encryptCommand(dbName, cleanArgs[1:])
 	}
 
 	connection, err := GetConnection(dbName)
@@ -248,13 +326,22 @@ func Exec() error {
 	}
 	defer connection.Close()
 
-	// Bad design it should be treated differently than other commands
-	if reflect.TypeOf(command).String() == "*src.CreateDbCommand" {
+	if subCommand == "createdb" {
 		CreateDatabaseSchema(connection)
 		return nil
 	}
 
-	err = command.Run(connection)
+	var sb SubCommandRunner
+	switch subCommand {
+	case "list":
+		sb = ListCommand{args: cleanArgs[1:]}
+	case "add":
+		sb = AddCommand{args: cleanArgs[1:]}
+	case "get":
+		sb = GetCommand{args: cleanArgs[1:]}
+	}
+
+	err = sb.Run(connection)
 	if err != nil {
 		return err
 	}
