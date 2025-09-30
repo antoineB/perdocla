@@ -307,12 +307,12 @@ func Exec() error {
 	}
 
 	// Check that dbName exists
-	_, err = os.Stat(dbName)
-	if err != nil {
-		return err
-	}
+	_, errStat := os.Stat(dbName)
 
 	if subCommand == "encrypt" {
+		if errStat != nil {
+			return err
+		}
 		return encryptCommand(dbName, cleanArgs[1:])
 	}
 
@@ -322,9 +322,13 @@ func Exec() error {
 	}
 	defer connection.Close()
 
-	if subCommand == "createdb" {
+	if subCommand == "createdb" && (errStat != nil || os.IsNotExist(errStat)) {
 		CreateDatabaseSchema(connection)
 		return nil
+	}
+
+	if errStat != nil {
+		return errStat
 	}
 
 	var sb SubCommandRunner
