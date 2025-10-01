@@ -1,6 +1,7 @@
 package src
 
 import (
+	"errors"
 	"flag"
 	"os"
 	"strconv"
@@ -57,6 +58,65 @@ type AddCommand struct {
 	args []string
 }
 
+func ProcessAddingFile(connection *sql.DB, filename string, tags string) error {
+	tx, err := connection.Begin()
+	if err != nil {
+		return err
+	}
+
+	id, err := InsertDocument(tx, filename)
+	if err != nil {
+		defer tx.Rollback()
+		return err
+	}
+	fmt.Printf("Inserted document %s\n", filename)
+
+	if tags != "" {
+		var text string
+		for tag := range strings.SplitSeq(tags, ",") {
+			err = AddTagToDocument(tx, id, tag)
+			if err != nil {
+				defer tx.Rollback()
+				return err
+			}
+			text = text + "Added tags " + tag + "\n"
+		}
+	}
+
+	defer tx.Commit()
+	return nil
+}
+
+func addCommandWalkTree(connection *sql.DB, filename string, tags string) error {
+	fi, _ := os.Stat(filename)
+
+	if fi.IsDir() {
+		filenames, err := os.ReadDir(filename)
+		if err != nil {
+			return err
+		}
+		var loopErrors error
+		for _, subFilename := range filenames {
+			// TODO: est ce qu'il faut construire le nom
+			err := addCommandWalkTree(connection, filename + "/" + subFilename.Name(), tags)
+			if err != nil {
+				loopErrors = errors.Join(loopErrors, err)
+			}
+		}
+		if loopErrors != nil {
+			return loopErrors
+		}
+	} else {
+		err := ProcessAddingFile(connection, filename, tags)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Processing file %s failed with %v\n", filename, err)
+			// TODO: return nil ?
+			return err
+		}
+	}
+	return nil
+}
+
 func (sb AddCommand) Run(connection *sql.DB) error {
 	fs := flag.NewFlagSet("add", flag.ExitOnError)
 	var tags string
@@ -69,21 +129,16 @@ func (sb AddCommand) Run(connection *sql.DB) error {
 		return fmt.Errorf("Missing filename")
 	}
 
-	id, err := InsertDocument(connection, remainingArgs[0])
+	filename := remainingArgs[0]
+	_, err := os.Stat(filename)
 	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "The file %s doesn't exist\n", filename)
+		}
 		return err
 	}
 
-	if tags != "" {
-		for tag := range strings.SplitSeq(tags, ",") {
-			err = AddTagToDocument(connection, id, tag)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
+	return addCommandWalkTree(connection, filename, tags)
 }
 
 type GetCommand struct {
@@ -126,13 +181,19 @@ func (sb GetCommand) Run(connection *sql.DB) error {
 	fmt.Println(document.id, ": ", document.filename, " (", document.createdAt, ")")
 
 	if tags != "" {
+		tx, err := connection.Begin()
+		if err != nil {
+			return err
+		}
 		for tag := range strings.SplitSeq(tags, ",") {
-			err = AddTagToDocument(connection, id, tag)
+			err = AddTagToDocument(tx, id, tag)
 			// TODO: if the tag already exists print an error message and keep going
 			if err != nil {
+				tx.Rollback()
 				return err
 			}
 		}
+		tx.Commit()
 	}
 
 	if date != "" {
@@ -316,7 +377,8 @@ func Exec() error {
 		return encryptCommand(dbName, cleanArgs[1:])
 	}
 
-	connection, err := GetConnection(dbName)
+	// TODO: Est ce que les valeurs sont utiles
+	connection, err := GetConnection(dbName + "?_journal_mode=DELETE&_locking_mode=NORMAL&_txlock=exclusive")
 	if err != nil {
 		return err
 	}

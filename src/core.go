@@ -13,7 +13,7 @@ import (
 )
 
 
-func InsertDocument(connection *sql.DB, filename string) (int, error) {
+func InsertDocument(connection *sql.Tx, filename string) (int, error) {
 	info, err := os.Stat(filename)
 	if err != nil {
 		return -1, err
@@ -42,7 +42,7 @@ func InsertDocument(connection *sql.DB, filename string) (int, error) {
 		bs,
 		content,
 		filename,
-		fileType.MIME.Type,
+		fileType.MIME.Value,
 		info.Size(),
 	).Scan(&id)
 	// TODO: meilleur erreur pour l'ajout en dupliquer du dossier
@@ -59,6 +59,9 @@ func InsertDocument(connection *sql.DB, filename string) (int, error) {
 	wordPositions := make(map[string][]int)
 	var positions []int
 	for index, word := range words {
+		if len(word) == 1 {
+			continue
+		}
 		positions = wordPositions[word]
 		if positions == nil {
 			positions = []int{}
@@ -81,7 +84,7 @@ func InsertDocument(connection *sql.DB, filename string) (int, error) {
 	return id, nil
 }
 
-func addTag(connection *sql.DB, tag string) (int, error) {
+func addTag(connection *sql.Tx, tag string) (int, error) {
 	id := -1
 	rows, err := connection.Query(
 		`SELECT id FROM tag WHERE name = $1`,
@@ -113,7 +116,7 @@ func addTag(connection *sql.DB, tag string) (int, error) {
 	return id, nil
 }
 
-func AddTagToDocument(connection *sql.DB, documentId int, tag string) error {
+func AddTagToDocument(connection *sql.Tx, documentId int, tag string) error {
 	tagId, err := addTag(connection, tag)
 	if err != nil {
 		return err
@@ -304,7 +307,12 @@ func CreateDatabaseSchema(connection *sql.DB) error {
 
 	sql4 := `CREATE TABLE "language"(id integer PRIMARY KEY, name string UNIQUE);`
 
-	sql5 := "CREATE TABLE document_text_content(document_id int, language_id int, text string, UNIQUE(document_id, language_id));"
+	sql5 := "CREATE TABLE document_inverted_index(document_id int, word string, positions bytes, UNIQUE(document_id, word));"
+
+	// PRAGMA foreign_keys = ON;
+	// PRAGMA optimize; (avant de fermer la base de données)
+	// PRAGMA busy_timeout=10000;
+	// PRAGMA synchronous=NORMAL;
 
 	for _, sqlStmt := range [...]string{sql1, sql2, sql3, sql4, sql5} {
 		_, err := connection.Exec(sqlStmt)
