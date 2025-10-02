@@ -4,6 +4,8 @@ import (
 	"errors"
 	"flag"
 	"os"
+	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -150,9 +152,11 @@ func (sb GetCommand) Run(connection *sql.DB) error {
 	var tags string
 	var date string
 	var output string
+	var consult bool
 	fs.StringVar(&tags, "tags", "", "Tags to add to the document")
 	fs.StringVar(&date, "date", "", "Date to add to the document")
 	fs.StringVar(&output, "output", "", "File where to write the content of the document")
+	fs.BoolVar(&consult, "consult", false, "Consult file using the program associated")
 
 	fs.Parse(sb.args)
 
@@ -214,6 +218,57 @@ func (sb GetCommand) Run(connection *sql.DB) error {
 		}
 		defer fd.Close()
 		fd.Write(document.binary)
+	}
+
+	if consult {
+		var executable string
+		var commandOptions []string
+		err := connection.QueryRow(
+			"SELECT executable FROM consult_executable WHERE mime_type = $1",
+			document.mimetype,
+		).Scan(&executable)
+		if err == sql.ErrNoRows {
+			switch runtime.GOOS {
+			case "windows":
+				commandOptions = []string{"cmd", "/C", "start"}
+			case "darwin":
+				commandOptions = []string{"open", "-n"}
+			case "linux":
+				commandOptions = []string{"xdg-open"}
+			default:
+				return fmt.Errorf(
+					"Unknown operating system: %s and no executable specified for %s\n",
+					runtime.GOOS,
+					document.mimetype,
+				)
+			}
+
+		} else if err != nil {
+			return err
+		} else {
+			commandOptions = []string{executable}
+		}
+
+		file, err := os.CreateTemp("", "perdocla")
+		if err != nil {
+			return err
+		}
+		tempFilename := file.Name()
+		defer os.Remove(tempFilename)
+
+		_, err = file.Write(document.binary)
+		file.Close()
+		if err != nil {
+			return err
+		}
+
+		commandOptions = append(commandOptions, tempFilename)
+
+		cmd := exec.Command(commandOptions[0], commandOptions[1:]...)
+		err = cmd.Run()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -309,12 +309,14 @@ func CreateDatabaseSchema(connection *sql.DB) error {
 
 	sql5 := "CREATE TABLE document_inverted_index(document_id int, word string, positions bytes, UNIQUE(document_id, word));"
 
+	sql6 := "CREATE TABLE consult_executable(mime_type string UNIQUE, executable string);"
+
 	// PRAGMA foreign_keys = ON;
 	// PRAGMA optimize; (avant de fermer la base de données)
 	// PRAGMA busy_timeout=10000;
 	// PRAGMA synchronous=NORMAL;
 
-	for _, sqlStmt := range [...]string{sql1, sql2, sql3, sql4, sql5} {
+	for _, sqlStmt := range [...]string{sql1, sql2, sql3, sql4, sql5, sql6} {
 		_, err := connection.Exec(sqlStmt)
 		if err != nil {
 			return err
