@@ -87,6 +87,10 @@ func readKeyFile(filename string) ([]byte, error) {
 		return []byte{}, err
 	}
 
+	if len(content) == 32 {
+		return content, nil
+	}
+
 	byteContent, err := hex.DecodeString(string(content))
 
 	if err != nil {

@@ -3,6 +3,7 @@ package src
 import (
 	"crypto/sha256"
 	"database/sql"
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -69,15 +70,36 @@ func InsertDocument(connection *sql.Tx, filename string) (int, error) {
 		positions = append(positions, index)
 		wordPositions[word] = positions
 	}
+	var extraStatements []string
 	for word, positions := range wordPositions {
 		sql := "INSERT INTO document_inverted_index(document_id, word, positions) VALUES($1, $2, jsonb_array("
-		for position := range positions {
+		for index, position := range positions {
+			if index >= 100 {
+				// Maximum SQLITE number of argument for a function is reached
+				extraStatements = append(
+					extraStatements,
+					fmt.Sprintf(
+						`UPDATE document_inverted_index
+						 SET positions = jsonb_insert(positions, '$[#]', %d)
+						 WHERE document_id = $1
+						 AND word = $2`,
+						position,
+					),
+				)
+				continue
+			}
 			sql = sql + strconv.Itoa(position) + ","
 		}
 		sql = sql[0:len(sql) - 1] + "))"
 		_, err := connection.Exec(sql, id, word)
 		if err != nil {
 			return id, err
+		}
+		for _, sql := range extraStatements {
+			_, err := connection.Exec(sql, id, word)
+			if err != nil {
+				return id, err
+			}
 		}
 	}
 

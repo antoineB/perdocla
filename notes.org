@@ -45,3 +45,11 @@ libleptonica-dev ??
 * DONE pour résoudre le problème d'incompatibilité entre les jpeg utiliser mutool directement en process
 * TODO pourvoir refaire l'extraction de text d'un document
 * DONE pouvoir ajouter un dossier
+* TODO gui
+* DONE ajouter tous les documents
+* TODO faire un meilleur log
+* DONE accepter une clé de 32 char
+* DONE il y a un problème jsonb_array peut avoir trop d'arguments
+* TODO ajouter des commentaires
+* TODO regarder les todo dans le code
+* TODO rajouter un vacuum à la fin de l'ajout de document (ou c'est une option dans les pragma)

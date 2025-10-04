@@ -93,6 +93,12 @@ func addCommandWalkTree(connection *sql.DB, filename string, tags string) error 
 	fi, _ := os.Stat(filename)
 
 	if fi.IsDir() {
+		if filename[len(filename) - 1] == '/' {
+			filename = filename[:len(filename) -1]
+		}
+		if filename == ".git" || len(filename) > 4 && filename[len(filename) - 5:] == "/.git" {
+			return nil
+		}
 		filenames, err := os.ReadDir(filename)
 		if err != nil {
 			return err
@@ -254,7 +260,12 @@ func (sb GetCommand) Run(connection *sql.DB) error {
 			return err
 		}
 		tempFilename := file.Name()
-		defer os.Remove(tempFilename)
+		if commandOptions[0] == "xdg-open" {
+			// It leak documents because I can make this current execution to wait its like xdg-open is run like "xdg-open doc.pdf &"
+			fmt.Printf("Remove %s yourself\n")
+		} else {
+			defer os.Remove(tempFilename)
+		}
 
 		_, err = file.Write(document.binary)
 		file.Close()
